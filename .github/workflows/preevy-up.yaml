@@ -1,0 +1,43 @@
+name: Deploy Preevy environment
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+concurrency: preevy-${{ github.event.number }}
+jobs:
+  deploy:
+    environment:
+      name: pr-${{ github.event.number }}
+      url: ${{ steps.store_url.outputs.url }}
+
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.PREEVY_SA_KEY }}'
+
+      - uses: livecycle/preevy-up-action@v1.2.0
+        id: preevy_up
+        with:
+          profile-url: ${{ vars.PREEVY_PROFILE_URL }}
+          # Set the compose files - comma separated
+          docker-compose-yaml-paths: compose.yaml
+
+      # Change `frontend` and `3000` in this step to your main service and port
+      # This will appear as the GH environment URL
+      - id: store_url
+        name: Store URL of frontend
+        run: |
+          echo url=$(echo '${{ steps.preevy_up.outputs.urls-json }}' | jq -r '.[] | select(.service=="frontend" and .port==3000).url') >> "$GITHUB_OUTPUT"

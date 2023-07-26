@@ -2,7 +2,7 @@
 
 ![Action](1.png)
 
-This repo demonstrates deploying a [Preevy](https://preevy.dev) environment per pull request. It also demostrates integration with GitHub deployments and [environments](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment).
+This repo demonstrates deploying a [Preevy](https://preevy.dev) environment per pull request. It also shows integration with GitHub deployments and [environments](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment).
 
 ### For every PR opened or updated:
 - Preevy will provision an [environment on a Google Cloud VM](https://preevy.dev/drivers/gcp-gce) with this PR content.

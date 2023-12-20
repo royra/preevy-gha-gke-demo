@@ -24,17 +24,77 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: 'Authenticate to Google Cloud'
+        id: gcloud_auth
         uses: 'google-github-actions/auth@v1'
         with:
+          token_format: access_token
           credentials_json: '${{ secrets.PREEVY_SA_KEY }}'
 
-      - uses: livecycle/preevy-up-action@v2.1.0
-        id: preevy_up
+      - name: Login to GAR
+        uses: docker/login-action@v3
         with:
-          profile-url: ${{ vars.PREEVY_PROFILE_URL }}
-          # Set the compose files - comma separated
-          docker-compose-yaml-paths: compose.yaml
-          args: "--driver kube-pod"
+          registry: me-west1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcloud_auth.outputs.access_token }}
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+
+      - uses: imjasonh/gke-auth@v0.2.0
+        with:
+          project:  livecycle-dev
+          location: me-west1-a
+          cluster:  preevy-demo
+      # - name: 'Set up Cloud SDK'
+      #   uses: 'google-github-actions/setup-gcloud@v2'
+      #   with:
+      #     install_components: 'gke-gcloud-auth-plugin'
+
+
+      # - name: Configure kubectl context
+      #   run: |
+      #     gcloud container clusters get-credentials preevy-demo --zone me-west1-a
+
+      # - name: Set up Docker Buildx
+      #   id: buildx_setup
+      #   uses: docker/setup-buildx-action@v3
+      #   with:
+      #     driver: remote
+      #     endpoint: kubernetes:///builder?deployment=buildkit-0c6a6988-a1f8-4ead-a92f-36fd2db7375a-h6kj2&kubeconfig=
+
+      - name: Configure buildx
+        run: |
+          mkdir -p ~/.docker/buildx/instances
+          echo '{"Name":"builder","Driver":"kubernetes","Nodes":[{"Name":"builder0","Endpoint":"kubernetes:///builder?deployment=buildkit-0c6a6988-a1f8-4ead-a92f-36fd2db7375a-h6kj2\u0026kubeconfig=","Platforms":null,"Flags":null,"DriverOpts":null,"Files":null}],"Dynamic":false}' > ~/.docker/buildx/instances/builder
+          echo '{"Name":"kube-builder","Driver":"kubernetes","Nodes":[{"Name":"kube-builder0","Endpoint":"kubernetes:///kube-builder?deployment=buildkit-86774d13-2b97-4e85-87b2-b9949f5b406d-7tcqg\u0026kubeconfig=","Platforms":null,"Flags":null,"DriverOpts":{"replicas":"2"},"Files":null}],"Dynamic":false}' > ~/.docker/buildx/instances/kube-builder
+
+      - name: Install preevy
+        run: |
+          wget -q https://github.com/livecycle/preevy/releases/download/v0.0.58/preevy-linux-x64.tar -O - | sudo tar -x -C /usr/local/bin
+
+      - name: Deploy Preevy environment
+        id: preevy_up
+        run: |
+          urls_file=${RUNNER_TEMP}/preevy_urls.${RANDOM}.json
+
+          preevy up \
+            --profile '${{ vars.PREEVY_PROFILE_URL }}' \
+            --output-urls-to "${urls_file}" \
+            --driver kube-pod \
+            --registry me-west1-docker.pkg.dev/livecycle-dev/preevy-gce-demo \
+            --builder kube-builder
+
+          echo "urls-json=$(cat ${urls_file})" >> $GITHUB_OUTPUT
+          echo "urls-file=${urls_file}" >> $GITHUB_OUTPUT
+      # - uses: livecycle/preevy-up-action@v2.1.0
+      #   id: preevy_up
+      #   with:
+      #     profile-url: ${{ vars.PREEVY_PROFILE_URL }}
+      #     # Set the compose files - comma separated
+      #     docker-compose-yaml-paths: compose.yaml
+      #     args: "--driver kube-pod --registry me-west1-docker.pkg.dev/livecycle-dev/preevy-gce-demo --builder builder"
+      #     # args: "--driver kube-pod --registry me-west1-docker.pkg.dev/livecycle-dev/preevy-gce-demo --builder ${{ steps.buildx_setup.outputs.name }}"
 
       # Change `frontend` and `3000` in this step to your main service and port
       # This will appear as the GH environment URL
@@ -45,6 +105,6 @@ jobs:
 
       - name: link environment to livecycle
         env:
-          LIVECYCLE_API_KEY: ${{ github.secrets.LIVECYCLE_API_KEY }}
+          LIVECYCLE_API_KEY: ${{ secrets.LIVECYCLE_API_KEY }}
           PREVIEW_URL: ${{ steps.store_url.outputs.url }}
         run: npx @livecycle/cli link --url=$PREVIEW_URL --from-git=. --api-key=$LIVECYCLE_API_KEY

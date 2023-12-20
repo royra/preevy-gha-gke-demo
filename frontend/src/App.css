@@ -10,6 +10,7 @@
 @media (prefers-reduced-motion: no-preference) {
   .App-logo {
     animation: App-logo-spin infinite 20s linear;
+    /* opacity: 0.3; */
   }
 }
 
@@ -22,6 +23,11 @@
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
+
+
+  /* background-image: url("https://s3.eu-central-1.amazonaws.com/lc-public/demo-bret-bg.png");
+  background-repeat: no-repeat;
+  background-position: center center; */
 }
 
 .App-link {

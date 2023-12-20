@@ -28,7 +28,7 @@ jobs:
         with:
           credentials_json: '${{ secrets.PREEVY_SA_KEY }}'
 
-      - uses: livecycle/preevy-up-action@v1.2.0
+      - uses: livecycle/preevy-up-action@v2.1.0
         id: preevy_up
         with:
           profile-url: ${{ vars.PREEVY_PROFILE_URL }}

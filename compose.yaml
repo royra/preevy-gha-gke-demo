@@ -69,6 +69,4 @@ secrets:
   db-password:
     file: db/password.txt
 
-x-preevy:
-  plugins:
-    - module: '@preevy/plugin-github-pr-link'
+

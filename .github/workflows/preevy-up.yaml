@@ -34,6 +34,7 @@ jobs:
           profile-url: ${{ vars.PREEVY_PROFILE_URL }}
           # Set the compose files - comma separated
           docker-compose-yaml-paths: compose.yaml
+          args: "--driver kube-pod"
 
       # Change `frontend` and `3000` in this step to your main service and port
       # This will appear as the GH environment URL

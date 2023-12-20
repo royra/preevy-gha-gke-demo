@@ -25,7 +25,7 @@ jobs:
       - uses: livecycle/preevy-down-action@v1.2.0
         with:
           profile-url: ${{ vars.PREEVY_PROFILE_URL }}
-          args: "--wait --force"
+          args: "--wait --force --driver kube-pod"
 
       #
       # OPTIONAL: delete GH deployments and environments

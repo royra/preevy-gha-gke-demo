@@ -15,9 +15,10 @@ ARG PORT=80
 ENV PORT $PORT
 EXPOSE $PORT 9229 9230
 
+RUN npm config set cache /cache/npm/backend
 COPY package.json /code/package.json
-COPY yarn.lock /code/yarn.lock
-RUN --mount=type=cache,target=/usr/local/share/.cache/yarn yarn install --frozen-lockfile
+COPY package-lock.json /code/package-lock.json
+RUN --mount=type=cache,target=/cache/npm/backend npm ci
 
 # check every 30s to ensure this service returns HTTP 200
 HEALTHCHECK --interval=30s \

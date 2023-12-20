@@ -6,12 +6,13 @@ ENV CI=true
 ENV PORT=3000
 
 WORKDIR /code
+RUN npm config set cache /cache/npm/frontend
 COPY package.json /code/package.json
-COPY yarn.lock /code/yarn.lock
-RUN --mount=type=cache,target=/usr/local/share/.cache/yarn yarn install --frozen-lockfile 
+COPY package-lock.json /code/package-lock.json
+RUN --mount=type=cache,target=/cache/npm/frontend npm ci
 COPY . /code
 
-CMD [ "yarn", "start" ]
+CMD [ "npm", "run", "start" ]
 
 FROM development AS builder
 
@@ -30,7 +31,7 @@ usermod -aG docker vscode
 EOF
 # install Docker tools (cli, buildx, compose)
 COPY --from=gloursdocker/docker / /
-CMD [ "yarn", "start" ]
+CMD [ "npm", "run", "start" ]
 
 FROM nginx:1.13-alpine
 

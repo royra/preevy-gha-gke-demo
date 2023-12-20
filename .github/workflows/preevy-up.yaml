@@ -28,7 +28,7 @@ jobs:
         with:
           credentials_json: '${{ secrets.PREEVY_SA_KEY }}'
 
-      - uses: livecycle/preevy-up-action@v1.2.0
+      - uses: livecycle/preevy-up-action@v2.1.0
         id: preevy_up
         with:
           profile-url: ${{ vars.PREEVY_PROFILE_URL }}
@@ -41,3 +41,9 @@ jobs:
         name: Store URL of frontend
         run: |
           echo url=$(echo '${{ steps.preevy_up.outputs.urls-json }}' | jq -r '.[] | select(.service=="frontend" and .port==3000).url') >> "$GITHUB_OUTPUT"
+
+      - name: link environment to livecycle
+        env:
+          LIVECYCLE_API_KEY: ${{ github.secrets.LIVECYCLE_API_KEY }}
+          PREVIEW_URL: ${{ steps.store_url.outputs.url }}
+        run: npx @livecycle/cli link --url=$PREVIEW_URL --from-git=. --api-key=$LIVECYCLE_API_KEY

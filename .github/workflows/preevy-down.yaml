@@ -15,10 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
+      - name: 'Authenticate to Google Cloud'
+        id: gcloud_auth
+        uses: 'google-github-actions/auth@v1'
         with:
-          install_components: 'gke-gcloud-auth-plugin'
+          token_format: access_token
+          credentials_json: '${{ secrets.PREEVY_SA_KEY }}'
 
       # required by imjasonh/gke-auth
       - uses: actions/setup-go@v4

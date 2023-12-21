@@ -12,12 +12,11 @@ permissions:
 concurrency: preevy-${{ github.event.number }}
 jobs:
   deploy:
+    timeout-minutes: 15
+
     environment:
       name: pr-${{ github.event.number }}
       url: ${{ fromJson(steps.preevy_up.outputs.urls-map).frontend[3000] }}
-
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
 
     runs-on: ubuntu-latest
     steps:
@@ -37,73 +36,45 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.gcloud_auth.outputs.access_token }}
 
+      # required by imjasonh/gke-auth
       - uses: actions/setup-go@v4
         with:
           go-version: 1.18
 
+      # this is a lot faster than installing gcloud and gke-gcloud-auth-plugin
       - uses: imjasonh/gke-auth@v0.2.0
         with:
-          project:  livecycle-dev
-          location: me-west1-a
-          cluster:  preevy-demo
-      # - name: 'Set up Cloud SDK'
-      #   uses: 'google-github-actions/setup-gcloud@v2'
-      #   with:
-      #     install_components: 'gke-gcloud-auth-plugin'
+          project: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          location: ${{ vars.GOOGLE_CLOUD_KUBE_CLUSTER_LOCATION }}
+          cluster: ${{ vars.GOOGLE_CLOUD_KUBE_CLUSTER_NAME }}
 
-
-      # - name: Configure kubectl context
-      #   run: |
-      #     gcloud container clusters get-credentials preevy-demo --zone me-west1-a
-
-      # - name: Set up Docker Buildx
-      #   id: buildx_setup
-      #   uses: docker/setup-buildx-action@v3
-      #   with:
-      #     driver: remote
-      #     endpoint: kubernetes:///builder?deployment=buildkit-0c6a6988-a1f8-4ead-a92f-36fd2db7375a-h6kj2&kubeconfig=
-
-      - name: Configure buildx
+      # use a preexisting kubernetes builder which already has cached layers
+      - name: Find pod of existing kubernetes builder
+        id: find_pod
         run: |
-          mkdir -p ~/.docker/buildx/instances
-          echo '{"Name":"kube-builder","Driver":"kubernetes","Nodes":[{"Name":"kube-builder0","Endpoint":"kubernetes:///kube-builder?deployment=buildkit-86774d13-2b97-4e85-87b2-b9949f5b406d-7tcqg\u0026kubeconfig=","Platforms":null,"Flags":null,"DriverOpts":{"replicas":"2"},"Files":null}],"Dynamic":false}' > ~/.docker/buildx/instances/kube-builder
+          pod=$(kubectl get pod --selector=app='${{ vars.GOOGLE_CLOUD_KUBE_CLUSTER_BUILDER }}' -o jsonpath='{.items[0].metadata.name}')
+          echo "pod=${pod}" >> $GITHUB_OUTPUT
+
+      - name: Configure buildx to use the existing kubernetes builder
+        id: buildx_setup
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          # https://github.com/moby/buildkit/tree/master/examples/kubernetes#pod
+          # uses the kube-pod connection helper: https://github.com/moby/buildkit/pull/951
+          endpoint: kube-pod://${{ steps.find_pod.outputs.pod }}
 
       - name: Deploy Preevy environment
         id: preevy_up
-        uses: livecycle/preevy-up-action@581cfeacbe433e71f68128f7020a22032dc9c6f0
+        uses: livecycle/preevy-up-action@v2.3.0
         with:
           install: 'gh-release'
           profile-url: ${{ vars.PREEVY_PROFILE_URL }}
-          args: "--driver kube-pod --registry me-west1-docker.pkg.dev/livecycle-dev/preevy-gce-demo --builder kube-builder"
-          # args: "--driver kube-pod --registry me-west1-docker.pkg.dev/livecycle-dev/preevy-gce-demo --builder ${{ steps.buildx_setup.outputs.name }}"
+          args: "--driver kube-pod --registry '${{ vars.GOOGLE_CLOUD_REGISTRY }}' --builder '${{ steps.buildx_setup.outputs.name }}'"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Debug
-        run: |
-          echo allall='${{ fromJson(steps.preevy_up.outputs.urls-map) }}'
-          echo index3000='${{ fromJson(steps.preevy_up.outputs.urls-map).frontend[3000] }}'
-          echo all='${{ fromJson(steps.preevy_up.outputs.urls-map).frontend }}'
-          echo format='${{ fromJson(steps.preevy_up.outputs.urls-map).frontend[format(3000)] }}'
-          echo index3000asstring='${{ fromJson(steps.preevy_up.outputs.urls-map).frontend['3000'] }}'
-      # - name: Install preevy
-      #   run: |
-      #     wget -q https://github.com/livecycle/preevy/releases/download/v0.0.58/preevy-linux-x64.tar -O - | sudo tar -x -C /usr/local/bin
-
-      # - name: Deploy Preevy environment
-      #   id: preevy_up
-      #   run: |
-      #     urls_file=${RUNNER_TEMP}/preevy_urls.${RANDOM}.json
-
-      #     preevy up \
-      #       --profile '${{ vars.PREEVY_PROFILE_URL }}' \
-      #       --output-urls-to "${urls_file}" \
-      #       --driver kube-pod \
-      #       --registry me-west1-docker.pkg.dev/livecycle-dev/preevy-gce-demo \
-      #       --builder kube-builder
-
-      #     echo "urls-json=$(cat ${urls_file})" >> $GITHUB_OUTPUT
-      #     echo "urls-file=${urls_file}" >> $GITHUB_OUTPUT
-
-      - name: link environment to livecycle
+      - name: Link environment to livecycle
         env:
           LIVECYCLE_API_KEY: ${{ secrets.LIVECYCLE_API_KEY }}
           PREVIEW_URL: ${{ fromJson(steps.preevy_up.outputs.urls-map).frontend[3000] }}

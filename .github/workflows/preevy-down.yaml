@@ -53,6 +53,7 @@ jobs:
       - uses: livecycle/preevy-down-action@f94196c17c7d53dcde0f0bb158be20fd3e08a62f
         with:
           profile-url: ${{ vars.PREEVY_PROFILE_URL }}
+          install: 'gh-release'
           args: "--wait --force --driver kube-pod"
         env:
           GITHUB_TOKEN: ${{ github.token }}

@@ -34,23 +34,7 @@ jobs:
           location: ${{ vars.GOOGLE_CLOUD_KUBE_CLUSTER_LOCATION }}
           cluster: ${{ vars.GOOGLE_CLOUD_KUBE_CLUSTER_NAME }}
 
-      # use a preexisting kubernetes builder which already has cached layers
-      - name: Find pod of existing kubernetes builder
-        id: find_pod
-        run: |
-          pod=$(kubectl get pod --selector=app='${{ vars.GOOGLE_CLOUD_KUBE_CLUSTER_BUILDER }}' -o jsonpath='{.items[0].metadata.name}')
-          echo "pod=${pod}" >> $GITHUB_OUTPUT
-
-      - name: Configure buildx to use the existing kubernetes builder
-        id: buildx_setup
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: remote
-          # https://github.com/moby/buildkit/tree/master/examples/kubernetes#pod
-          # uses the kube-pod connection helper: https://github.com/moby/buildkit/pull/951
-          endpoint: kube-pod://${{ steps.find_pod.outputs.pod }}
-
-      - uses: livecycle/preevy-down-action@f94196c17c7d53dcde0f0bb158be20fd3e08a62f
+      - uses: livecycle/preevy-down-action@v1.4.0
         with:
           profile-url: ${{ vars.PREEVY_PROFILE_URL }}
           install: 'gh-release'

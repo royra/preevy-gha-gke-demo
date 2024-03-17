@@ -73,9 +73,3 @@ jobs:
           args: "--driver kube-pod --registry '${{ vars.GOOGLE_CLOUD_REGISTRY }}' --builder '${{ steps.buildx_setup.outputs.name }}'"
         env:
           GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Link environment to livecycle
-        env:
-          LIVECYCLE_API_KEY: ${{ secrets.LIVECYCLE_API_KEY }}
-          PREVIEW_URL: ${{ fromJson(steps.preevy_up.outputs.urls-map).frontend[3000] }}
-        run: npx @livecycle/cli link --url=$PREVIEW_URL --from-git=. --api-key=$LIVECYCLE_API_KEY

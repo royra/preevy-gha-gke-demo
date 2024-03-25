@@ -28,6 +28,8 @@ services:
       - private
     depends_on:
       - db
+    links:
+      - db
   db:
     # We use a mariadb image which supports both amd64 & arm64 architecture
     image: mariadb:10.6.4-focal
@@ -58,6 +60,8 @@ services:
     networks:
       - public
     depends_on:
+      - backend
+    links:
       - backend
 networks:
   public:
